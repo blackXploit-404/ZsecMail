@@ -1,4 +1,4 @@
-Sure, let's break down the provided code step by step:
+
 
 1. **Token and Configuration**: 
    - `telegramAuthToken`: This is the authentication token required to communicate with the Telegram Bot API.
