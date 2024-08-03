@@ -1,7 +1,9 @@
-const telegramAuthToken = 'Paste Your Tele Token Here';
+const telegramAuthToken = '7081436627:AAEBrtN4l5r5hVMCoDVs7r86xIniusngXls';
 const webhookEndpoint = '/endpoint';
 const oneSecMailApiUrl = 'https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1';
+const availableDomains = ['1secmail.com', '1secmail.net', '1secmail.org'];
 let tempEmail = '';
+let emailExpiry = null;
 
 addEventListener('fetch', event => {
   event.respondWith(handleIncomingRequest(event));
@@ -45,15 +47,21 @@ async function processUpdate(update) {
     }
 
     // Check if the user wants to generate a temporary email address
-    else if (userText.toLowerCase().trim() === '/generate_email') {
-      const emailResponse = await fetch(oneSecMailApiUrl);
+    else if (userText.toLowerCase().startsWith('/generate_email')) {
+      const domain = userText.split(' ')[1] || '1secmail.com';
+
+      if (!availableDomains.includes(domain)) {
+        const responseText = `Invalid domain. Available domains are: ${availableDomains.join(', ')}`;
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+        return;
+      }
+
+      const emailResponse = await fetch(`https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1&domain=${domain}`);
       if (emailResponse.ok) {
         const emailData = await emailResponse.json();
         tempEmail = emailData[0];
-        
-        // Provide a link to view the email in the browser
         const emailLink = `https://www.1secmail.com/mailbox/${tempEmail.split('@')[0]}/${tempEmail.split('@')[1]}`;
-        
         const responseText = `Your temporary email address is: ${tempEmail}\n\nYou can view your email [here](${emailLink})\n\nor click /fetchmail`;
         const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}&parse_mode=Markdown`;
         await fetch(telegramApiUrl);
@@ -87,6 +95,94 @@ async function processUpdate(update) {
         }
       } else {
         const responseText = 'Failed to fetch emails';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+      }
+    }
+
+    // Handle email deletion
+    else if (userText.toLowerCase().startsWith('/delete_email')) {
+      const emailNumber = parseInt(userText.split(' ')[1], 10);
+
+      if (!tempEmail) {
+        const responseText = 'Please generate an email address first using /generate_email command.';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+        return;
+      }
+
+      if (!emailNumber) {
+        const responseText = 'Please provide the number of the email you want to delete.';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+        return;
+      }
+
+      const emailResponse = await fetch(`https://www.1secmail.com/api/v1/?action=getMessages&login=${tempEmail.split('@')[0]}&domain=${tempEmail.split('@')[1]}`);
+      if (emailResponse.ok) {
+        const emailData = await emailResponse.json();
+        if (emailData[emailNumber - 1]) {
+          const deleteResponse = await fetch(`https://www.1secmail.com/api/v1/?action=deleteMessage&login=${tempEmail.split('@')[0]}&domain=${tempEmail.split('@')[1]}&id=${emailData[emailNumber - 1].id}`);
+          if (deleteResponse.ok) {
+            const responseText = 'Email deleted successfully.';
+            const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+            await fetch(telegramApiUrl);
+          } else {
+            const responseText = 'Failed to delete email.';
+            const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+            await fetch(telegramApiUrl);
+          }
+        } else {
+          const responseText = 'Invalid email number.';
+          const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+          await fetch(telegramApiUrl);
+        }
+      } else {
+        const responseText = 'Failed to fetch emails for deletion.';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+      }
+    }
+
+    // Handle advanced search
+    else if (userText.toLowerCase().startsWith('/search')) {
+      const [command, searchQuery] = userText.split(' ', 2);
+
+      if (!tempEmail) {
+        const responseText = 'Please generate an email address first using /generate_email command.';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+        return;
+      }
+
+      if (!searchQuery) {
+        const responseText = 'Please provide a search query.';
+        const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+        await fetch(telegramApiUrl);
+        return;
+      }
+
+      const emailResponse = await fetch(`https://www.1secmail.com/api/v1/?action=getMessages&login=${tempEmail.split('@')[0]}&domain=${tempEmail.split('@')[1]}`);
+      if (emailResponse.ok) {
+        const emailData = await emailResponse.json();
+        const filteredEmails = emailData.filter(email =>
+          email.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          email.from.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          email.body.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        
+        if (filteredEmails.length > 0) {
+          const messages = filteredEmails.map(email => `From: ${email.from}\nSubject: ${email.subject}\nBody: ${email.body}`).join('\n\n');
+          const responseText = messages;
+          const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+          await fetch(telegramApiUrl);
+        } else {
+          const responseText = 'No emails found matching the search query.';
+          const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
+          await fetch(telegramApiUrl);
+        }
+      } else {
+        const responseText = 'Failed to fetch emails for search.';
         const telegramApiUrl = `https://api.telegram.org/bot${telegramAuthToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(responseText)}`;
         await fetch(telegramApiUrl);
       }
