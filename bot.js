@@ -1,4 +1,4 @@
-const telegramAuthToken = '7081436627:AAEBrtN4l5r5hVMCoDVs7r86xIniusngXls';
+const telegramAuthToken = '';
 const webhookEndpoint = '/endpoint';
 const oneSecMailApiUrl = 'https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1';
 const availableDomains = ['1secmail.com', '1secmail.net', '1secmail.org'];
