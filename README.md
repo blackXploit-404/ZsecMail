@@ -43,4 +43,4 @@
 
 The code sets up a Cloudflare Worker to serve as a webhook for a Telegram bot. It processes updates from Telegram, handles various commands, and interacts with both the Telegram API and the temporary email service API to provide responses and functionality to the users. The worker listens for HTTP requests, processes them according to the method and path, and handles errors appropriately.
 
-Your understanding and summary of the code are accurate. If you have specific concerns or questions about any part of the implementation, feel free to ask!
+
