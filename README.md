@@ -43,4 +43,14 @@
 
 The code sets up a Cloudflare Worker to serve as a webhook for a Telegram bot. It processes updates from Telegram, handles various commands, and interacts with both the Telegram API and the temporary email service API to provide responses and functionality to the users. The worker listens for HTTP requests, processes them according to the method and path, and handles errors appropriately.
 
+**How to Set Up Your Own Bot Using Workers:**
+
+1. Copy my code and create a new account on Cloudflare.
+2. Go to the Workers section and add a new worker.
+3. Paste the code into the worker editor.
+4. Cloudflare will provide you with a URL. Set this URL as the webhook endpoint in your Telegram bot settings.
+5. Make sure to replace the placeholder bot token with your actual bot token.
+6. Save your settings, and you're all set!
+
+By following these steps, you'll have your own Telegram bot webhook set up using Cloudflare Workers.
 
